@@ -286,8 +286,8 @@ textarea{resize:vertical;line-height:1.6;}
       <div class="stitle">Game Info</div>
       <div class="lbl">Players</div>
       <div class="count-wrap" id="count-wrap"></div>
-      <div class="lbl">メモ</div>
-      <textarea id="comment" rows="3" placeholder="このハンドに関するメモを自由記載..."></textarea>
+      <div class="lbl">Game / Tournament Info</div>
+      <textarea id="comment" rows="1" placeholder="大会名・ブラインドレベルなど..." style="resize:none;"></textarea>
     </div>
 
     <!-- Player Notes -->
@@ -315,6 +315,10 @@ textarea{resize:vertical;line-height:1.6;}
       <div class="stitle">Action</div>
       <div id="streets-wrap"></div>
       <button class="add-street" id="add-street-btn" onclick="addStreet()">+ ストリート追加</button>
+      <div style="margin-top:18px;">
+        <div class="lbl">Comment</div>
+        <textarea id="street-comment" rows="3" placeholder="このハンドの振り返り・改善点など..."></textarea>
+      </div>
     </div>
 
     <button class="share-big" onclick="openShare()">Share This Hand</button>
@@ -367,7 +371,7 @@ let state = {
 
 function newStreet(name){ return {name, board:[], boardOpen:false, actions:[]}; }
 function uid(){ return Math.random().toString(36).slice(2,9); }
-function newAction(){ return {id:uid(), position:"", action:"", size:""}; }
+function newAction(){ return {id:uid(), position:"", action:"", size:"", stack:""}; }
 
 // ── Render helpers ────────────────────────────────────────────────
 function el(id){ return document.getElementById(id); }
@@ -574,6 +578,17 @@ function renderStreets(){
         inp.oninput=()=>{ state.streets[si].actions[ai].size=inp.value; };
         row.appendChild(inp);
       }
+      // all-in stack input
+      if(a.action==="All-in"){
+        const slbl = document.createElement("span");
+        slbl.textContent="相手スタック:";
+        slbl.style.cssText="color:#ffffff;font-size:12px;white-space:nowrap;";
+        row.appendChild(slbl);
+        const sinp = document.createElement("input");
+        sinp.placeholder="BB"; sinp.value=a.stack||""; sinp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
+        sinp.oninput=()=>{ state.streets[si].actions[ai].stack=sinp.value; };
+        row.appendChild(sinp);
+      }
 
       // remove
       const rb = document.createElement("button");
@@ -616,6 +631,7 @@ function resetAll(){
   if(!confirm("リセットしますか？")) return;
   state={playerCount:6,myPosition:"",hand:[],handPickerOpen:false,playerNotes:{},streets:[newStreet("Preflop")]};
   el("comment").value="";
+  el("street-comment").value="";
   renderAll();
 }
 
@@ -644,12 +660,15 @@ function buildShareText(){
       if(a.position||a.action){
         let ln=`  ${a.position||"?"} → ${a.action||"?"}`;
         if(a.size) ln+=` ${a.size}BB`;
+        if(a.action==="All-in"&&a.stack) ln+=` (相手スタック: ${a.stack}BB)`;
         L.push(ln);
       }
     });
     if(!s.actions.length) L.push("  —");
     L.push("");
   });
+  const sc = el("street-comment").value;
+  if(sc) L.push(`💬 Comment:\n${sc}\n`);
   L.push("═══════════════════════════");
   return L.join("\n");
 }
