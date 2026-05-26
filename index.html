@@ -581,7 +581,7 @@ function renderStreets(){
       // all-in stack input
       if(a.action==="All-in"){
         const slbl = document.createElement("span");
-        slbl.textContent="相手スタック:";
+        slbl.textContent="スタック:";
         slbl.style.cssText="color:#ffffff;font-size:12px;white-space:nowrap;";
         row.appendChild(slbl);
         const sinp = document.createElement("input");
@@ -660,7 +660,7 @@ function buildShareText(){
       if(a.position||a.action){
         let ln=`  ${a.position||"?"} → ${a.action||"?"}`;
         if(a.size) ln+=` ${a.size}BB`;
-        if(a.action==="All-in"&&a.stack) ln+=` (相手スタック: ${a.stack}BB)`;
+        if(a.action==="All-in"&&a.stack) ln+=` (スタック: ${a.stack}BB)`;
         L.push(ln);
       }
     });
