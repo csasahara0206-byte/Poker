@@ -609,7 +609,7 @@ function renderStreets(){
         // size input
         if(a.action==="Raise"||a.action==="Bet"||a.action==="Call"){
           const inp = document.createElement("input");
-          inp.placeholder="BB"; inp.value=a.size; inp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
+          inp.placeholder=""; inp.value=a.size; inp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
           inp.oninput=()=>{ state.streets[si].actions[ai].size=inp.value; };
           row.appendChild(inp);
         }
@@ -620,7 +620,7 @@ function renderStreets(){
           slbl.style.cssText="color:#ffffff;font-size:12px;white-space:nowrap;";
           row.appendChild(slbl);
           const sinp = document.createElement("input");
-          sinp.placeholder="BB"; sinp.value=a.stack||""; sinp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
+          sinp.placeholder=""; sinp.value=a.stack||""; sinp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
           sinp.oninput=()=>{ state.streets[si].actions[ai].stack=sinp.value; };
           row.appendChild(sinp);
         }
@@ -718,12 +718,8 @@ function buildShareText(){
 
   // Streets
   L.push("\n── Action ──");
-  let runningPot = 0;
   state.streets.forEach(s=>{
-    const thisPot = calcStreetPot(s.actions);
-    runningPot += thisPot;
-    const potStr = runningPot > 0 ? ` (Pot: ${runningPot%1===0?runningPot:runningPot.toFixed(1)}BB)` : "";
-    L.push(`▸ ${s.name}${potStr}`);
+    L.push(`▸ ${s.name}`);
     s.actions.forEach(a=>{
       if(a.action==="Check Around"){
         L.push(`  ✓ Check Around`);
