@@ -587,41 +587,47 @@ function renderStreets(){
       const row = document.createElement("div");
       row.className = "action-row";
 
-      // position select (hidden for Check Around)
-      if(a.action !== "Check Around"){
+      if(a.action === "Check Around"){
+        // Check Aroundはシンプルにラベルのみ表示
+        const lbl = document.createElement("span");
+        lbl.textContent = "✓ Check Around";
+        lbl.style.cssText="color:#7aaae8;font-weight:600;font-size:13px;flex:1;";
+        row.appendChild(lbl);
+      } else {
+        // position select
         const ps = document.createElement("select");
         ps.innerHTML = `<option value="">Position</option>` + positions.map(p=>`<option value="${p}"${a.position===p?" selected":""}>${p}</option>`).join("");
         ps.onchange = ()=>{ state.streets[si].actions[ai].position=ps.value; };
         row.appendChild(ps);
+
+        // action select
+        const actionList = st.name==="Preflop" ? ACTIONS : ACTIONS_WITH_CA;
+        const as = document.createElement("select");
+        as.innerHTML = `<option value="">Action</option>` + actionList.map(ac=>`<option value="${ac}"${a.action===ac?" selected":""}>${ac}</option>`).join("");
+        as.onchange = ()=>{ state.streets[si].actions[ai].action=as.value; state.streets[si].actions[ai].position=""; renderStreets(); };
+        row.appendChild(as);
+
+        // size input
+        if(a.action==="Raise"||a.action==="Bet"||a.action==="Call"){
+          const inp = document.createElement("input");
+          inp.placeholder="BB"; inp.value=a.size; inp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
+          inp.oninput=()=>{ state.streets[si].actions[ai].size=inp.value; };
+          row.appendChild(inp);
+        }
+        // all-in stack input
+        if(a.action==="All-in"){
+          const slbl = document.createElement("span");
+          slbl.textContent="スタック:";
+          slbl.style.cssText="color:#ffffff;font-size:12px;white-space:nowrap;";
+          row.appendChild(slbl);
+          const sinp = document.createElement("input");
+          sinp.placeholder="BB"; sinp.value=a.stack||""; sinp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
+          sinp.oninput=()=>{ state.streets[si].actions[ai].stack=sinp.value; };
+          row.appendChild(sinp);
+        }
       }
 
-      // action select
-      const actionList = st.name==="Preflop" ? ACTIONS : ACTIONS_WITH_CA;
-      const as = document.createElement("select");
-      as.innerHTML = `<option value="">Action</option>` + actionList.map(ac=>`<option value="${ac}"${a.action===ac?" selected":""}>${ac}</option>`).join("");
-      as.onchange = ()=>{ state.streets[si].actions[ai].action=as.value; state.streets[si].actions[ai].position=""; renderStreets(); };
-      row.appendChild(as);
-
-      // size input
-      if(a.action==="Raise"||a.action==="Bet"||a.action==="Call"){
-        const inp = document.createElement("input");
-        inp.placeholder="BB"; inp.value=a.size; inp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
-        inp.oninput=()=>{ state.streets[si].actions[ai].size=inp.value; };
-        row.appendChild(inp);
-      }
-      // all-in stack input
-      if(a.action==="All-in"){
-        const slbl = document.createElement("span");
-        slbl.textContent="スタック:";
-        slbl.style.cssText="color:#ffffff;font-size:12px;white-space:nowrap;";
-        row.appendChild(slbl);
-        const sinp = document.createElement("input");
-        sinp.placeholder="BB"; sinp.value=a.stack||""; sinp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
-        sinp.oninput=()=>{ state.streets[si].actions[ai].stack=sinp.value; };
-        row.appendChild(sinp);
-      }
-
-      // remove
+      // remove button (共通)
       const rb = document.createElement("button");
       rb.className="btn btn-danger"; rb.textContent="✕";
       rb.style.cssText="margin-left:auto;padding:4px 9px;font-size:11px;";
