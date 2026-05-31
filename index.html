@@ -569,7 +569,19 @@ function renderStreets(){
     // action list
     const alist = document.createElement("div");
     alist.className = "action-list";
-    const positions = POSITIONS[state.playerCount]||[];
+    const allPositions = POSITIONS[state.playerCount]||[];
+    // Flop以降: Preflopで入力されたポジション一覧に絞る（なければ全表示）
+    let positions = allPositions;
+    if(st.name !== "Preflop"){
+      const preflopSt = state.streets.find(s=>s.name==="Preflop");
+      const usedInPreflop = preflopSt
+        ? preflopSt.actions.map(a=>a.position).filter(Boolean)
+        : [];
+      if(usedInPreflop.length > 0){
+        // allPositionsの順序を保ちつつ絞る
+        positions = allPositions.filter(p=>usedInPreflop.includes(p));
+      }
+    }
 
     st.actions.forEach((a,ai)=>{
       const row = document.createElement("div");
@@ -679,23 +691,33 @@ function buildShareText(){
   L.push("╔═══════════════════════════╗");
   L.push("║   🃏  POKER HAND REVIEW    ║");
   L.push("╚═══════════════════════════╝");
+
+  // Game Info
   L.push(`Players : ${state.playerCount}`);
-  if(state.myPosition) L.push(`Hero    : ${state.myPosition}`);
-  if(state.hand.length) L.push(`Hand    : ${state.hand.join(" ")}`);
-  if(state.board.length) L.push(`Board   : ${state.board.join(" ")}`);
   const note = el("comment").value;
-  if(note) L.push(`\nNote:\n${note}`);
+  if(note) L.push(`Game    : ${note}`);
+
+  // Player Notes
   const filled = positions.filter(p=>state.playerNotes[p]);
   if(filled.length){
     L.push("\n── Player Notes ──");
     positions.forEach((p,i)=>{ if(state.playerNotes[p]) L.push(`  P${i+1}: ${state.playerNotes[p]}`); });
   }
-  L.push("");
+
+  // Hero
+  L.push("\n── Hero ──");
+  if(state.myPosition) L.push(`  Position : ${state.myPosition}`);
+  if(state.hand.length) L.push(`  Hand     : ${state.hand.join(" ")}`);
+  if(state.board.length) L.push(`  Board    : ${state.board.join(" ")}`);
+
+  // Streets
+  L.push("\n── Action ──");
   state.streets.forEach(s=>{
     L.push(`▸ ${s.name}`);
-    if(s.board.length) L.push(`  Board: ${s.board.join(" ")}`);
     s.actions.forEach(a=>{
-      if(a.position||a.action){
+      if(a.action==="Check Around"){
+        L.push(`  ✓ Check Around`);
+      } else if(a.position||a.action){
         let ln=`  ${a.position||"?"} → ${a.action||"?"}`;
         if(a.size) ln+=` ${a.size}BB`;
         if(a.action==="All-in"&&a.stack) ln+=` (スタック: ${a.stack}BB)`;
@@ -705,6 +727,7 @@ function buildShareText(){
     if(!s.actions.length) L.push("  —");
     L.push("");
   });
+
   const sc = el("street-comment").value;
   if(sc) L.push(`💬 Comment:\n${sc}\n`);
   L.push("═══════════════════════════");
