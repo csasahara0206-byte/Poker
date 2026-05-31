@@ -545,16 +545,6 @@ function renderHandPicker(){
   area.appendChild(wrap);
 }
 
-// ── Pot calculation ───────────────────────────────────────────────
-function calcStreetPot(actions){
-  // Raise/Bet/Call/All-inのsizeを合算
-  return actions.reduce((sum, a)=>{
-    const v = parseFloat(a.size)||0;
-    if(a.action==="Raise"||a.action==="Bet"||a.action==="Call"||a.action==="All-in") return sum+v;
-    return sum;
-  }, 0);
-}
-
 // Streets
 function renderStreets(){
   const w = el("streets-wrap");
@@ -567,24 +557,6 @@ function renderStreets(){
     const hdr = document.createElement("div");
     hdr.className = "street-hdr";
     hdr.innerHTML = `<span class="street-tag">${st.name}</span>`;
-
-    // ポット計算: このストリートまでの累計
-    const prevPot = state.streets.slice(0,si).reduce((sum,s)=>sum+calcStreetPot(s.actions),0);
-    const thisPot = calcStreetPot(st.actions);
-    const totalPot = prevPot + thisPot;
-
-    // ポット表示
-    const potEl = document.createElement("div");
-    potEl.style.cssText="display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-left:8px;";
-    if(thisPot > 0 || prevPot > 0){
-      potEl.innerHTML = `
-        <span style="font-family:monospace;font-size:11px;color:#ffdd88;letter-spacing:.05em;">
-          Pot <strong style="font-size:13px;">${totalPot % 1 === 0 ? totalPot : totalPot.toFixed(1)} BB</strong>
-        </span>
-        ${si > 0 && thisPot > 0 ? `<span style="font-family:monospace;font-size:10px;color:#9a9690;">このストリート +${thisPot % 1===0?thisPot:thisPot.toFixed(1)}</span>` : ''}
-      `;
-    }
-    hdr.appendChild(potEl);
 
     const removeBtn = document.createElement("button");
     removeBtn.className = "btn btn-danger";
@@ -631,14 +603,14 @@ function renderStreets(){
         const actionList = st.name==="Preflop" ? ACTIONS : ACTIONS_WITH_CA;
         const as = document.createElement("select");
         as.innerHTML = `<option value="">Action</option>` + actionList.map(ac=>`<option value="${ac}"${a.action===ac?" selected":""}>${ac}</option>`).join("");
-        as.onchange = ()=>{ state.streets[si].actions[ai].action=as.value; state.streets[si].actions[ai].position=""; renderStreets(); };
+        as.onchange = ()=>{ state.streets[si].actions[ai].action=as.value; renderStreets(); };
         row.appendChild(as);
 
         // size input
         if(a.action==="Raise"||a.action==="Bet"||a.action==="Call"){
           const inp = document.createElement("input");
           inp.placeholder="BB"; inp.value=a.size; inp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
-          inp.oninput=()=>{ state.streets[si].actions[ai].size=inp.value; renderStreets(); };
+          inp.oninput=()=>{ state.streets[si].actions[ai].size=inp.value; };
           row.appendChild(inp);
         }
         // all-in stack input
