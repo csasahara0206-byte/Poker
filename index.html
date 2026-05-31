@@ -432,13 +432,13 @@ function renderPositions(){
   });
 }
 
-// Player notes
+// Player notes - always 9 players
 function renderPlayerNotes(){
-  const positions = POSITIONS[state.playerCount]||[];
-  el("pnotes-title").textContent = `Player Notes · ${state.playerCount}P`;
+  const allNinePositions = POSITIONS[9];
+  el("pnotes-title").textContent = `Player Notes · 9P`;
   const w = el("pnotes-wrap");
   w.innerHTML = "";
-  positions.forEach((pos,i)=>{
+  allNinePositions.forEach((pos,i)=>{
     const row = document.createElement("div");
     row.className = "pnote-row";
     row.innerHTML = `<div class="pnum">P${i+1}</div>`;
@@ -545,6 +545,16 @@ function renderHandPicker(){
   area.appendChild(wrap);
 }
 
+// ── Pot calculation ───────────────────────────────────────────────
+function calcStreetPot(actions){
+  // Raise/Bet/Call/All-inのsizeを合算
+  return actions.reduce((sum, a)=>{
+    const v = parseFloat(a.size)||0;
+    if(a.action==="Raise"||a.action==="Bet"||a.action==="Call"||a.action==="All-in") return sum+v;
+    return sum;
+  }, 0);
+}
+
 // Streets
 function renderStreets(){
   const w = el("streets-wrap");
@@ -557,6 +567,24 @@ function renderStreets(){
     const hdr = document.createElement("div");
     hdr.className = "street-hdr";
     hdr.innerHTML = `<span class="street-tag">${st.name}</span>`;
+
+    // ポット計算: このストリートまでの累計
+    const prevPot = state.streets.slice(0,si).reduce((sum,s)=>sum+calcStreetPot(s.actions),0);
+    const thisPot = calcStreetPot(st.actions);
+    const totalPot = prevPot + thisPot;
+
+    // ポット表示
+    const potEl = document.createElement("div");
+    potEl.style.cssText="display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-left:8px;";
+    if(thisPot > 0 || prevPot > 0){
+      potEl.innerHTML = `
+        <span style="font-family:monospace;font-size:11px;color:#ffdd88;letter-spacing:.05em;">
+          Pot <strong style="font-size:13px;">${totalPot % 1 === 0 ? totalPot : totalPot.toFixed(1)} BB</strong>
+        </span>
+        ${si > 0 && thisPot > 0 ? `<span style="font-family:monospace;font-size:10px;color:#9a9690;">このストリート +${thisPot % 1===0?thisPot:thisPot.toFixed(1)}</span>` : ''}
+      `;
+    }
+    hdr.appendChild(potEl);
 
     const removeBtn = document.createElement("button");
     removeBtn.className = "btn btn-danger";
@@ -610,7 +638,7 @@ function renderStreets(){
         if(a.action==="Raise"||a.action==="Bet"||a.action==="Call"){
           const inp = document.createElement("input");
           inp.placeholder="BB"; inp.value=a.size; inp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
-          inp.oninput=()=>{ state.streets[si].actions[ai].size=inp.value; };
+          inp.oninput=()=>{ state.streets[si].actions[ai].size=inp.value; renderStreets(); };
           row.appendChild(inp);
         }
         // all-in stack input
@@ -702,11 +730,12 @@ function buildShareText(){
   const note = el("comment").value;
   if(note) L.push(`Game    : ${note}`);
 
-  // Player Notes
-  const filled = positions.filter(p=>state.playerNotes[p]);
+  // Player Notes (always 9 players)
+  const ninePositions = POSITIONS[9];
+  const filled = ninePositions.filter(p=>state.playerNotes[p]);
   if(filled.length){
     L.push("\n── Player Notes ──");
-    positions.forEach((p,i)=>{ if(state.playerNotes[p]) L.push(`  P${i+1}: ${state.playerNotes[p]}`); });
+    ninePositions.forEach((p,i)=>{ if(state.playerNotes[p]) L.push(`  P${i+1}: ${state.playerNotes[p]}`); });
   }
 
   // Hero
@@ -717,8 +746,12 @@ function buildShareText(){
 
   // Streets
   L.push("\n── Action ──");
+  let runningPot = 0;
   state.streets.forEach(s=>{
-    L.push(`▸ ${s.name}`);
+    const thisPot = calcStreetPot(s.actions);
+    runningPot += thisPot;
+    const potStr = runningPot > 0 ? ` (Pot: ${runningPot%1===0?runningPot:runningPot.toFixed(1)}BB)` : "";
+    L.push(`▸ ${s.name}${potStr}`);
     s.actions.forEach(a=>{
       if(a.action==="Check Around"){
         L.push(`  ✓ Check Around`);
