@@ -570,16 +570,15 @@ function renderStreets(){
     const alist = document.createElement("div");
     alist.className = "action-list";
     const allPositions = POSITIONS[state.playerCount]||[];
-    // Flop以降: Preflopで入力されたポジション一覧に絞る（なければ全表示）
+    // 前のストリートで使われたポジションに絞る
     let positions = allPositions;
     if(st.name !== "Preflop"){
-      const preflopSt = state.streets.find(s=>s.name==="Preflop");
-      const usedInPreflop = preflopSt
-        ? preflopSt.actions.map(a=>a.position).filter(Boolean)
-        : [];
-      if(usedInPreflop.length > 0){
-        // allPositionsの順序を保ちつつ絞る
-        positions = allPositions.filter(p=>usedInPreflop.includes(p));
+      const prevStreets = state.streets.slice(0, si);
+      const usedInPrev = [...new Set(
+        prevStreets.flatMap(s => s.actions.map(a=>a.position).filter(Boolean))
+      )];
+      if(usedInPrev.length > 0){
+        positions = allPositions.filter(p => usedInPrev.includes(p));
       }
     }
 
