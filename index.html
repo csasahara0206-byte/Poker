@@ -310,6 +310,17 @@ textarea{resize:vertical;line-height:1.6;}
       <div class="cp-area" id="hand-picker" style="display:none"></div>
     </div>
 
+    <!-- Board -->
+    <div class="card fu fu4">
+      <div class="stitle">Board</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+        <div id="board-display"><span class="chip-empty">未選択</span></div>
+        <button class="btn btn-blue" onclick="toggleBoardPicker()">ボード選択</button>
+        <button class="btn btn-danger" id="board-clear" style="display:none" onclick="clearBoard()">クリア</button>
+      </div>
+      <div class="cp-area" id="board-picker" style="display:none"></div>
+    </div>
+
     <!-- Action -->
     <div class="card fu fu4">
       <div class="stitle">Action</div>
@@ -357,15 +368,21 @@ const POSITIONS = {
   9:["UTG","UTG+1","UTG+2","LJ","HJ","CO","BTN","SB","BB"],
 };
 const ACTIONS = ["Fold","Check","Call","Raise","Bet","All-in"];
+const ACTIONS_WITH_CA = ["Fold","Check","Check Around","Call","Raise","Bet","All-in"];
 const STREETS = ["Preflop","Flop","Turn","River"];
 
 // ── State ─────────────────────────────────────────────────────────
+function loadNotes(){ try{ return JSON.parse(localStorage.getItem("pokerPlayerNotes")||"{}"); }catch(e){ return {}; } }
+function saveNotes(notes){ try{ localStorage.setItem("pokerPlayerNotes", JSON.stringify(notes)); }catch(e){} }
+
 let state = {
   playerCount: 6,
   myPosition: "",
   hand: [],
   handPickerOpen: false,
-  playerNotes: {},
+  board: [],
+  boardPickerOpen: false,
+  playerNotes: loadNotes(),
   streets: [newStreet("Preflop")],
 };
 
@@ -382,6 +399,8 @@ function renderAll(){
   renderPlayerNotes();
   renderHandDisplay();
   renderHandPicker();
+  renderBoardDisplay();
+  renderBoardPicker();
   renderStreets();
   el("add-street-btn").style.display = state.streets.length >= 4 ? "none" : "block";
 }
@@ -394,7 +413,7 @@ function renderCounts(){
     const b = document.createElement("button");
     b.className = "cnt-btn" + (n===state.playerCount?" active":"");
     b.textContent = n;
-    b.onclick = ()=>{ state.playerCount=n; state.myPosition=""; state.playerNotes={}; renderAll(); };
+    b.onclick = ()=>{ state.playerCount=n; state.myPosition=""; renderAll(); };
     w.appendChild(b);
   });
 }
@@ -428,7 +447,7 @@ function renderPlayerNotes(){
     ta.placeholder = `P${i+1} のメモ（スタック・傾向など）`;
     ta.value = state.playerNotes[pos]||"";
     ta.style.flex = "1";
-    ta.oninput = ()=>{ state.playerNotes[pos]=ta.value; };
+    ta.oninput = ()=>{ state.playerNotes[pos]=ta.value; saveNotes(state.playerNotes); };
     row.appendChild(ta);
     w.appendChild(row);
   });
@@ -448,6 +467,52 @@ function renderHandDisplay(){
     const suit=c.slice(-1);
     return `<span class="chip" style="color:${SUIT_COLORS[suit]}">${c}</span>`;
   }).join(" ");
+}
+
+// Board display
+function renderBoardDisplay(){
+  const d = el("board-display");
+  const btn = el("board-clear");
+  if(!state.board.length){
+    d.innerHTML = `<span class="chip-empty">未選択</span>`;
+    btn.style.display="none";
+    return;
+  }
+  btn.style.display="";
+  d.innerHTML = state.board.map(c=>{
+    const suit=c.slice(-1);
+    return `<span class="chip" style="color:${SUIT_COLORS[suit]}">${c}</span>`;
+  }).join(" ");
+}
+
+// Board picker grid
+function renderBoardPicker(){
+  const area = el("board-picker");
+  area.style.display = state.boardPickerOpen ? "block" : "none";
+  if(!state.boardPickerOpen) return;
+  const wrap = document.createElement("div");
+  wrap.className = "cp-wrap";
+  SUITS.forEach(s=>{
+    const col = document.createElement("div");
+    col.className = "cp-col";
+    RANKS.forEach(r=>{
+      const card = r+s;
+      const b = document.createElement("button");
+      b.className = "cp-btn" + (state.board.includes(card)?" sel":"");
+      b.style.color = state.board.includes(card) ? "#c4a050" : SUIT_COLORS[s];
+      b.textContent = card;
+      b.onclick = ()=>{
+        if(state.board.includes(card)) state.board=state.board.filter(c=>c!==card);
+        else if(state.board.length<5) state.board.push(card);
+        renderBoardDisplay();
+        renderBoardPicker();
+      };
+      col.appendChild(b);
+    });
+    wrap.appendChild(col);
+  });
+  area.innerHTML="";
+  area.appendChild(wrap);
 }
 
 // Hand picker grid
@@ -493,27 +558,6 @@ function renderStreets(){
     hdr.className = "street-hdr";
     hdr.innerHTML = `<span class="street-tag">${st.name}</span>`;
 
-    if(st.name!=="Preflop"){
-      const boardBtn = document.createElement("button");
-      boardBtn.className = "btn btn-ghost";
-      boardBtn.style.padding="5px 12px";
-      boardBtn.textContent = st.boardOpen ? "閉じる" : "ボード選択";
-      boardBtn.onclick = ()=>{ state.streets[si].boardOpen=!st.boardOpen; renderStreets(); };
-      hdr.appendChild(boardBtn);
-      // board chips
-      const bc = document.createElement("div");
-      bc.className = "card-chips";
-      if(st.board.length){
-        st.board.forEach(c=>{
-          const suit=c.slice(-1);
-          bc.innerHTML += `<span class="chip" style="color:${SUIT_COLORS[suit]}">${c}</span>`;
-        });
-      } else {
-        bc.innerHTML = `<span class="chip-empty">ボード未選択</span>`;
-      }
-      hdr.appendChild(bc);
-    }
-
     const removeBtn = document.createElement("button");
     removeBtn.className = "btn btn-danger";
     removeBtn.style.cssText="margin-left:auto;padding:5px 10px;";
@@ -521,34 +565,6 @@ function renderStreets(){
     removeBtn.onclick = ()=>{ state.streets.splice(si,1); renderStreets(); el("add-street-btn").style.display = state.streets.length>=4?"none":"block"; };
     hdr.appendChild(removeBtn);
     block.appendChild(hdr);
-
-    // board picker
-    if(st.boardOpen && st.name!=="Preflop"){
-      const bpArea = document.createElement("div");
-      bpArea.className = "cp-area";
-      bpArea.style.marginBottom="14px";
-      const bpWrap = document.createElement("div");
-      bpWrap.className = "cp-wrap";
-      SUITS.forEach(s=>{
-        const col=document.createElement("div"); col.className="cp-col";
-        RANKS.forEach(r=>{
-          const card=r+s;
-          const b=document.createElement("button");
-          b.className="cp-btn"+(st.board.includes(card)?" sel":"");
-          b.style.color=st.board.includes(card)?"#c4a050":SUIT_COLORS[s];
-          b.textContent=card;
-          b.onclick=()=>{
-            if(st.board.includes(card)) state.streets[si].board=st.board.filter(c=>c!==card);
-            else if(st.board.length<5) state.streets[si].board.push(card);
-            renderStreets();
-          };
-          col.appendChild(b);
-        });
-        bpWrap.appendChild(col);
-      });
-      bpArea.appendChild(bpWrap);
-      block.appendChild(bpArea);
-    }
 
     // action list
     const alist = document.createElement("div");
@@ -559,16 +575,19 @@ function renderStreets(){
       const row = document.createElement("div");
       row.className = "action-row";
 
-      // position select
-      const ps = document.createElement("select");
-      ps.innerHTML = `<option value="">Position</option>` + positions.map(p=>`<option value="${p}"${a.position===p?" selected":""}>${p}</option>`).join("");
-      ps.onchange = ()=>{ state.streets[si].actions[ai].position=ps.value; };
-      row.appendChild(ps);
+      // position select (hidden for Check Around)
+      if(a.action !== "Check Around"){
+        const ps = document.createElement("select");
+        ps.innerHTML = `<option value="">Position</option>` + positions.map(p=>`<option value="${p}"${a.position===p?" selected":""}>${p}</option>`).join("");
+        ps.onchange = ()=>{ state.streets[si].actions[ai].position=ps.value; };
+        row.appendChild(ps);
+      }
 
       // action select
+      const actionList = st.name==="Preflop" ? ACTIONS : ACTIONS_WITH_CA;
       const as = document.createElement("select");
-      as.innerHTML = `<option value="">Action</option>` + ACTIONS.map(ac=>`<option value="${ac}"${a.action===ac?" selected":""}>${ac}</option>`).join("");
-      as.onchange = ()=>{ state.streets[si].actions[ai].action=as.value; renderStreets(); };
+      as.innerHTML = `<option value="">Action</option>` + actionList.map(ac=>`<option value="${ac}"${a.action===ac?" selected":""}>${ac}</option>`).join("");
+      as.onchange = ()=>{ state.streets[si].actions[ai].action=as.value; state.streets[si].actions[ai].position=""; renderStreets(); };
       row.appendChild(as);
 
       // size input
@@ -601,11 +620,23 @@ function renderStreets(){
 
     block.appendChild(alist);
 
-    // add action
+    // add action button
     const addBtn = document.createElement("button");
     addBtn.className="btn btn-blue"; addBtn.style.marginTop="12px"; addBtn.textContent="+ アクション追加";
     addBtn.onclick=()=>{ state.streets[si].actions.push(newAction()); renderStreets(); };
     block.appendChild(addBtn);
+
+    // Check Around quick button (Flop以降のみ)
+    if(st.name !== "Preflop"){
+      const caBtn = document.createElement("button");
+      caBtn.className="btn btn-ghost"; caBtn.style.cssText="margin-top:12px;margin-left:8px;";
+      caBtn.textContent="✓ Check Around";
+      caBtn.onclick=()=>{
+        state.streets[si].actions.push({id:uid(),position:"",action:"Check Around",size:"",stack:""});
+        renderStreets();
+      };
+      block.appendChild(caBtn);
+    }
 
     w.appendChild(block);
   });
@@ -620,6 +651,12 @@ function toggleHandPicker(){
 }
 function clearHand(){ state.hand=[]; renderHandDisplay(); renderHandPicker(); }
 
+function toggleBoardPicker(){
+  state.boardPickerOpen=!state.boardPickerOpen;
+  renderBoardPicker();
+}
+function clearBoard(){ state.board=[]; renderBoardDisplay(); renderBoardPicker(); }
+
 function addStreet(){
   const used=state.streets.map(s=>s.name);
   const next=STREETS.find(s=>!used.includes(s));
@@ -628,8 +665,8 @@ function addStreet(){
 }
 
 function resetAll(){
-  if(!confirm("リセットしますか？")) return;
-  state={playerCount:6,myPosition:"",hand:[],handPickerOpen:false,playerNotes:{},streets:[newStreet("Preflop")]};
+  if(!confirm("リセットしますか？\n（プレイヤーメモは保持されます）")) return;
+  state={playerCount:6,myPosition:"",hand:[],handPickerOpen:false,board:[],boardPickerOpen:false,playerNotes:loadNotes(),streets:[newStreet("Preflop")]};
   el("comment").value="";
   el("street-comment").value="";
   renderAll();
@@ -645,6 +682,7 @@ function buildShareText(){
   L.push(`Players : ${state.playerCount}`);
   if(state.myPosition) L.push(`Hero    : ${state.myPosition}`);
   if(state.hand.length) L.push(`Hand    : ${state.hand.join(" ")}`);
+  if(state.board.length) L.push(`Board   : ${state.board.join(" ")}`);
   const note = el("comment").value;
   if(note) L.push(`\nNote:\n${note}`);
   const filled = positions.filter(p=>state.playerNotes[p]);
