@@ -609,7 +609,7 @@ function renderStreets(){
         // size input
         if(a.action==="Raise"||a.action==="Bet"||a.action==="Call"){
           const inp = document.createElement("input");
-          inp.placeholder=""; inp.value=a.size; inp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
+          inp.placeholder="点"; inp.value=a.size; inp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
           inp.oninput=()=>{ state.streets[si].actions[ai].size=inp.value; };
           row.appendChild(inp);
         }
@@ -620,7 +620,7 @@ function renderStreets(){
           slbl.style.cssText="color:#ffffff;font-size:12px;white-space:nowrap;";
           row.appendChild(slbl);
           const sinp = document.createElement("input");
-          sinp.placeholder=""; sinp.value=a.stack||""; sinp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
+          sinp.placeholder="点"; sinp.value=a.stack||""; sinp.style.cssText="width:80px;flex:0 0 80px;font-family:monospace;";
           sinp.oninput=()=>{ state.streets[si].actions[ai].stack=sinp.value; };
           row.appendChild(sinp);
         }
@@ -725,8 +725,8 @@ function buildShareText(){
         L.push(`  ✓ Check Around`);
       } else if(a.position||a.action){
         let ln=`  ${a.position||"?"} → ${a.action||"?"}`;
-        if(a.size) ln+=` ${a.size}BB`;
-        if(a.action==="All-in"&&a.stack) ln+=` (スタック: ${a.stack}BB)`;
+        if(a.size) ln+=` ${a.size}点`;
+        if(a.action==="All-in"&&a.stack) ln+=` (スタック: ${a.stack}点)`;
         L.push(ln);
       }
     });
